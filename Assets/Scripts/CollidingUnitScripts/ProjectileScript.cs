@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -11,12 +12,16 @@ public class ProjectileScript : MonoBehaviour, ICollidingUnit
     Ability abilityRef;
 
     int hitCount;
+    [SerializeField]
+    int maximumHitCount;
+    [SerializeField]
+    float unitSpeed;
     Coroutine behaviour;
 
 
-    public void Initialize(AbilityManager.Targeting targetingInformation, Vector3 target, Ability callerReference)
+    public void Initialize(Vector3 target, Ability callerReference)
     {
-        targetingInfo = targetingInformation;
+        targetingInfo = callerReference.targetingInformation;
         targetPosition = target;
         abilityRef = callerReference;
 
@@ -31,7 +36,7 @@ public class ProjectileScript : MonoBehaviour, ICollidingUnit
     {
         float distance = Vector3.Distance(startingPosition, targetPosition);
         float t = 0;
-        float tStep = 1 / (distance / targetingInfo.unitSpeed);
+        float tStep = 1 / (distance / unitSpeed);
         //lerp position to target
         while (t < 2)
         {
@@ -43,13 +48,16 @@ public class ProjectileScript : MonoBehaviour, ICollidingUnit
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if(targetingInfo.maximumHitCount >= hitCount++)
+        if(maximumHitCount >= hitCount++)
         {
             //do hit stuff
-            abilityRef.ApplyComponentEffects();
+            if (abilityRef)
+                abilityRef.ApplyComponentEffects();
+            else
+                throw new Exception("Ability Reference Null in Projectile Script");
 
         }
-        if (targetingInfo.maximumHitCount >= hitCount)
+        if (maximumHitCount >= hitCount)
         {
             //destroy self / back to pool
             StopCoroutine(behaviour);

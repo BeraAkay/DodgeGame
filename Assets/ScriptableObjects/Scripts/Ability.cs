@@ -18,7 +18,7 @@ public class Ability : ScriptableObject
     public void Use(Transform userTransform, Vector3 target = default(Vector3))
     {
         //instantiate collidingUnit and give it the activeComponents
-        Instantiate(targetingInformation.collidingUnit, userTransform).GetComponent<ICollidingUnit>().Initialize(targetingInformation, target, this);
+        Instantiate(targetingInformation.collidingUnit, userTransform).GetComponent<ICollidingUnit>().Initialize(target, this);
 
     }
     public void Use()

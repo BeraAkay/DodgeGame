@@ -209,13 +209,10 @@ public class AbilityManager : MonoBehaviour
     [Serializable]//, RequireComponent(typeof(Collider2D))] reqComp doesnt work here apparently, sadly
     public class Targeting
     {
-        public enum Type { TargetGround, Projectile , UnitSpawn};
+        public enum Type { TargetGround, Projectile , UnitSpawn, Laser};
 
         public Type type;
-        public GameObject collidingUnit;//unit that has a collider such as a projectile
-        public float unitSpeed;
-
-        public int maximumHitCount;
+        public GameObject collidingUnit;//unit that has a collider such as a projectil
 
     }
 

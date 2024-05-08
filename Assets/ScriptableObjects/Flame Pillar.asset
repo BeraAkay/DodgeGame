@@ -10,23 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3cac85d3fb38beb4bb877aeb93670147, type: 3}
-  m_Name: Deadly Flourish
+  m_Name: Flame Pillar
   m_EditorClassIdentifier: 
-  name: '"Deadly Flourish"'
-  cooldown: 5
+  name: 
+  cooldown: 0
   targetingInformation:
     type: 0
-    collidingUnit: {fileID: 9138986177031594840, guid: 5e5fbf46ca0333941845c3f632c1c388, type: 3}
-    unitSpeed: 1
-    maximumHitCount: 10
-  activeComponents:
-  - magnitude: 0
-    duration: 0
-    type: 0
-  - magnitude: 0
-    duration: 0
-    type: 2
-  passiveComponents:
-  - magnitude: 0
-    duration: 0
-    type: 3
+    collidingUnit: {fileID: 0}
+  activeComponents: []
+  passiveComponents: []

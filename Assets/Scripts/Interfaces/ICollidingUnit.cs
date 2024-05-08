@@ -5,9 +5,9 @@ using UnityEngine;
 
 public interface ICollidingUnit
 {
-    public void Initialize(AbilityManager.Targeting targetingInformation, Vector3 target, Ability callerReference);
+    public void Initialize(Vector3 target, Ability callerReference);
 
-    public IEnumerator UnitBehaviour();
+    public IEnumerator UnitBehaviour();//this is only necessary to make you remember to use it this way, there are no current calls to this via interface shenanigans
     /*
     public IEnumerator ProjectileBehaviour();
 
