@@ -141,10 +141,10 @@ public class PlayerController : MonoBehaviour
     {
         float distance = Vector3.Distance(oldPosition, targetPosition);
         float t = 0;
-        float tStep = 1 / (distance / movementSpeed);
+        float tStep = 0.01f / (distance / movementSpeed);
         while ((transform.position - targetPosition).magnitude > stopDistance)
         {
-            t += tStep * 0.1f;
+            t += tStep;
             transform.position = Vector3.Lerp(oldPosition, targetPosition, t);//lerp already clamps so no need to mathfMin it
             yield return new WaitForFixedUpdate();
         }
@@ -194,7 +194,7 @@ public class PlayerController : MonoBehaviour
 
     public void Root(bool flag)
     {
-        if (flag)
+        if (flag && moveCoroutine != null)
         {
             StopCoroutine(moveCoroutine);
         }

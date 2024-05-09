@@ -13,16 +13,16 @@ MonoBehaviour:
   m_Name: Dark Binding
   m_EditorClassIdentifier: 
   name: Dark Binding
-  cooldown: 5
+  cooldown: 3
   targetingInformation:
-    type: 1
+    type: 0
     collidingUnit: {fileID: 9138986177031594840, guid: 5e5fbf46ca0333941845c3f632c1c388, type: 3}
   activeComponents:
   - magnitude: 0
     duration: 0
     type: 0
   - magnitude: 0
-    duration: 0
+    duration: 2
     type: 2
   passiveComponents:
   - magnitude: 0

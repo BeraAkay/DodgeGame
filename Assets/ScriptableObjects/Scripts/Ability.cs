@@ -28,7 +28,10 @@ public class Ability : ScriptableObject
 
     public void ApplyComponentEffects()
     {
-
+        foreach(var component in activeComponents)
+        {
+            component.InvokeComponent(name);
+        }
     }
 
     public void ActivatePassives(bool flag)

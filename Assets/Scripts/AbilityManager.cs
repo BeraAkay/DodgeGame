@@ -19,6 +19,8 @@ public class AbilityManager : MonoBehaviour
 
     void Awake()
     {
+        playerController = FindAnyObjectByType<PlayerController>();
+
         componentDictionary = new Dictionary<AbilityComponent.Type, Action<AbilityInput>>();
         //enemy
         componentDictionary[AbilityComponent.Type.Damage] = Damage;
@@ -209,10 +211,10 @@ public class AbilityManager : MonoBehaviour
     [Serializable]//, RequireComponent(typeof(Collider2D))] reqComp doesnt work here apparently, sadly
     public class Targeting
     {
-        public enum Type { TargetGround, Projectile , UnitSpawn, Laser};
+        public enum Type { TargetGround, Projectile , UnitSpawn, Laser, Self };//this is unused
+        public Type type;//this is unused 
 
-        public Type type;
-        public GameObject collidingUnit;//unit that has a collider such as a projectil
+        public GameObject collidingUnit;//unit that has a collider such as a projectile
 
     }
 
