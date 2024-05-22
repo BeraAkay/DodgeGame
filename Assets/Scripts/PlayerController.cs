@@ -60,6 +60,8 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    public CommandIndicator commandIndicator;
+
     // Start is called before the first frame update
     void Awake()
     {
@@ -117,6 +119,8 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
+        
+
         /*
         targetPosition = playerInput.actions["TargetPosition"].ReadValue<Vector2>();
         targetPosition = Camera.main.ScreenToWorldPoint(targetPosition);
@@ -124,6 +128,7 @@ public class PlayerController : MonoBehaviour
         targetPosition.z = 0;
         */
         targetPosition = MousePosition;
+        commandIndicator.IndicateLocation(targetPosition);
         //Debug.Log(targetPosition);
 
         oldPosition = transform.position;

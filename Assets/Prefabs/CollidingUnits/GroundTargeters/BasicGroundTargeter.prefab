@@ -101,6 +101,6 @@ MonoBehaviour:
   activeTime: 0.2
   fadeTime: 1
   shape: 0
-  baseColor: {r: 1, g: 0.38431373, b: 0, a: 1}
-  activeColor: {r: 1, g: 0, b: 0, a: 1}
-  fadeColor: {r: 0, g: 0, b: 0, a: 1}
+  baseColor: {r: 1, g: 0.38431373, b: 0, a: 0.7490196}
+  activeColor: {r: 1, g: 0, b: 0, a: 0.7490196}
+  fadeColor: {r: 0, g: 0, b: 0, a: 0.7490196}

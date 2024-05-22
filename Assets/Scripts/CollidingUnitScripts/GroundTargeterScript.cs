@@ -7,7 +7,8 @@ public class GroundTargeterScript : MonoBehaviour, ICollidingUnit
     [SerializeField]
     float appearTime, activeTime, fadeTime;
 
-    float tickRate;
+    [SerializeField]
+    float tickRate = 0.5f;
 
     Ability abilityRef;
     public enum Shape { Circle, Box, CapsuleVertical, CapsuleHorizontal };
@@ -98,6 +99,8 @@ public class GroundTargeterScript : MonoBehaviour, ICollidingUnit
         //LayerMask mask = LayerMask.GetMask("Player");
         Collider2D hit = null;
 
+        //Debug.Log("activating");
+
         if(activeTime > 0)
         {
             spriteRenderer.color = activeColor;
@@ -122,7 +125,7 @@ public class GroundTargeterScript : MonoBehaviour, ICollidingUnit
             }
         }
 
-        
+        //Debug.Log("fading");
 
         colorRef = fadeColor;
         timer = fadeTime;
@@ -134,7 +137,7 @@ public class GroundTargeterScript : MonoBehaviour, ICollidingUnit
             spriteRenderer.color = colorRef;
         }
 
-        StopCoroutine(behaviour);
+        //StopCoroutine(behaviour);
         Destroy(gameObject);
     }
 

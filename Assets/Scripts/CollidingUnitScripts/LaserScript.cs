@@ -27,7 +27,7 @@ public class LaserScript : MonoBehaviour, ICollidingUnit //this seems useless, a
         Vector3 dir = (target - transform.position).normalized;
         float angle = Vector3.SignedAngle(Vector3.up, dir, Vector3.forward);
         //transform.RotateAround(Vector3.forward, angle);
-        Debug.Log(angle);
+        //Debug.Log(angle);
         transform.transform.rotation = Quaternion.identity;
         transform.Rotate(new Vector3(0, 0, angle));
 
