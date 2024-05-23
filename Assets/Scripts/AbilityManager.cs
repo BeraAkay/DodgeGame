@@ -54,7 +54,13 @@ public class AbilityManager : MonoBehaviour
         }
         else//heal over time
         {
-            StartCoroutine(EffectOverTime(input, playerController.ApplyHeal));
+            Coroutine buff = playerController.HasBuff(input.id);
+            if (buff != null)
+            {
+                StopCoroutine(buff);
+                playerController.RemoveFromBuffs(input.id);
+            }
+            StartCoroutine(EffectOverTime(input, playerController.ApplyHeal, () => playerController.RemoveFromBuffs(input.id)));
         }
     }
 
@@ -70,12 +76,26 @@ public class AbilityManager : MonoBehaviour
 
     void Stasis(AbilityInput input)
     {
-
+        Coroutine buff = playerController.HasBuff(input.id);
+        if (buff != null)
+        {
+            StopCoroutine(buff);
+            playerController.RemoveFromBuffs(input.id);
+            playerController.Stasis(false);
+        }
+        StartCoroutine(EffectOverTime(input, playerController.Stasis, () => playerController.RemoveFromBuffs(input.id)));
     }
 
     void SpeedUp(AbilityInput input)
     {
-        StartCoroutine(EffectOverTime(input, playerController.ModifyMovementSpeed));
+        Coroutine buff = playerController.HasBuff(input.id);
+        if (buff != null)
+        {
+            StopCoroutine(buff);
+            playerController.RemoveFromBuffs(input.id);
+            playerController.ModifyMovementSpeed(input, false);
+        }
+        StartCoroutine(EffectOverTime(input, playerController.ModifyMovementSpeed, () => playerController.RemoveFromBuffs(input.id)));
     }
 
     void Cleanse(AbilityInput input = null)
@@ -86,6 +106,7 @@ public class AbilityManager : MonoBehaviour
     void Dash(AbilityInput input)
     {
         //use the mover/move from playercontroller after giving them parameters
+        playerController.Dash(input);
     }
     #endregion
 
@@ -98,24 +119,53 @@ public class AbilityManager : MonoBehaviour
         }
         else//damage over time
         {
-            StartCoroutine(EffectOverTime(input, playerController.ApplyDamage));
+            //MAYBE add a new variable called stackable and if the ability is stackable dont use this block, if its not stackable use the part etc etc
+            Coroutine debuff = playerController.HasDebuff(input.id);
+            if (debuff != null)
+            {
+                StopCoroutine(debuff);
+                playerController.RemoveFromDebuffs(input.id);
+            }
+            
+            playerController.AddToDebuffs(input.id, StartCoroutine(EffectOverTime(input, playerController.ApplyDamage, () => playerController.RemoveFromDebuffs(input.id))));
         }
     }
 
     void Stun(AbilityInput input)
     {
-        StartCoroutine(EffectOverTime(input, playerController.Stun));
+        Coroutine debuff = playerController.HasDebuff(input.id);
+        if (debuff != null)
+        {
+            StopCoroutine(debuff);
+            playerController.RemoveFromDebuffs(input.id);
+            playerController.Stun(false);
+        }
+        playerController.AddToDebuffs(input.id, StartCoroutine(EffectOverTime(input, playerController.Stun, () => playerController.RemoveFromDebuffs(input.id))));
     }
 
     void Root(AbilityInput input)
     {
-        StartCoroutine(EffectOverTime(input, playerController.Root));
+        Coroutine debuff = playerController.HasDebuff(input.id);
+        if (debuff != null)
+        {
+            StopCoroutine(debuff);
+            playerController.RemoveFromDebuffs(input.id);
+            playerController.Root(false);
+        }
+        playerController.AddToDebuffs(input.id, StartCoroutine(EffectOverTime(input, playerController.Root, () => playerController.RemoveFromDebuffs(input.id))));
     }
 
     void Mark(AbilityInput input)
     {
         //StartCoroutine(MarkTracker(input.id, input.duration));
-        StartCoroutine(EffectOverTime(input, playerController.Mark));
+        Coroutine debuff = playerController.HasDebuff(input.id);
+        if(debuff != null)
+        {
+            StopCoroutine(debuff);
+            playerController.RemoveFromDebuffs(input.id);
+            playerController.Mark(input, false);
+        }
+        playerController.AddToDebuffs(input.id, StartCoroutine(EffectOverTime(input, playerController.Mark, () => playerController.RemoveFromDebuffs(input.id))));
     }
 
     void SpawnUnit(AbilityInput input)//maybe make this into a targeting type so it can just use a prefab of the unit
@@ -125,9 +175,17 @@ public class AbilityManager : MonoBehaviour
 
     void Slow(AbilityInput input)
     {
-        input.magnitude = -input.magnitude;
+        Coroutine debuff = playerController.HasDebuff(input.id);
+        if (debuff != null)
+        {
+            StopCoroutine(debuff);
+            playerController.RemoveFromDebuffs(input.id);
+            playerController.ModifyMovementSpeed(input, true);
+        }
+        input.magnitude = -input.magnitude;//TEST IF SLOWS WORK I DONT REMEMBER TESTING NOR DID THIS MAKE SENSE TO ME, cuz its already modified im modmovsped inside
+        //re looking at things its neede as effectovertime always claims positive, so yea, turn the actions into no parameter types with lambda and put inputs in the lambda funcs
         //StartCoroutine(Slower(input.magnitude, input.duration));
-        StartCoroutine(EffectOverTime(input, playerController.ModifyMovementSpeed));
+        playerController.AddToDebuffs(input.id, StartCoroutine(EffectOverTime(input, playerController.ModifyMovementSpeed)));
     }
     #endregion
 
@@ -147,26 +205,38 @@ public class AbilityManager : MonoBehaviour
         playerController.RemoveMark(id);
     }
     */
-
-    IEnumerator EffectOverTime(AbilityInput input, Action<AbilityInput, bool> effectFunc)
+    //callbacks are for removing the ability from the buff/debuff list when its done
+    IEnumerator EffectOverTime(AbilityInput input, Action<AbilityInput, bool> effectFunc, Action callback = null)
     {
         effectFunc(input, true);
         yield return new WaitForSeconds(input.duration);
         effectFunc(input, false);
+        if(callback != null)
+        {
+            callback();
+        }
     }
 
-    IEnumerator EffectOverTime(AbilityInput input, Action<AbilityInput> effectFunc)
+    IEnumerator EffectOverTime(AbilityInput input, Action<AbilityInput> effectFunc, Action callback = null)
     {
         effectFunc(input);
         yield return new WaitForSeconds(input.duration);
+        if (callback != null)
+        {
+            callback();
+        }
 
     }
 
-    IEnumerator EffectOverTime(AbilityInput input, Action<bool> effectFunc)
+    IEnumerator EffectOverTime(AbilityInput input, Action<bool> effectFunc, Action callback = null)
     {
         effectFunc(true);
         yield return new WaitForSeconds(input.duration);
         effectFunc(false);
+        if (callback != null)
+        {
+            callback();
+        }
     }
 
     #endregion
@@ -180,7 +250,7 @@ public class AbilityManager : MonoBehaviour
     public class AbilityComponent
     {
         //public string name;
-        public int magnitude, duration;
+        public float magnitude, duration;
         public enum Type { Damage, Stun, Root, Mark, Spawn, Slow, Heal, SpeedUp, Blink, Stasis, Cleanse, Dash };
         public Type type;
 
@@ -199,9 +269,9 @@ public class AbilityManager : MonoBehaviour
     public class AbilityInput
     {
         public string id = "";
-        public int magnitude = 0, duration = 0;
+        public float magnitude = 0, duration = 0;
         
-        public AbilityInput(string _id = "", int _magnitude = 0, int _duration = 0)
+        public AbilityInput(string _id = "", float _magnitude = 0, float _duration = 0)
         {
             id = _id;
             magnitude = _magnitude;

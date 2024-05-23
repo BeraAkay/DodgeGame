@@ -98,7 +98,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   appearTime: 1
-  activeTime: 1
+  activeTime: 0.5
   fadeTime: 1
   baseColor: {r: 0.8301887, g: 0.82325584, b: 0.7244571, a: 0.7490196}
   activeColor: {r: 1, g: 0, b: 0, a: 0.7490196}

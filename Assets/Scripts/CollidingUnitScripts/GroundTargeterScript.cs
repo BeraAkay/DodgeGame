@@ -30,6 +30,7 @@ public class GroundTargeterScript : MonoBehaviour, ICollidingUnit
 
     public void Initialize(Vector3 target, Ability ability)
     {
+        //caching refs and base values
         abilityRef = ability;
 
         transform.position = target;
@@ -61,7 +62,7 @@ public class GroundTargeterScript : MonoBehaviour, ICollidingUnit
         //this section can be turned into a dict and the dict can just be used to access the method in unitbehaviour but that is not necessary for the current needs
         if (shape == Shape.Circle)
         {
-            overlapFunc = () => Physics2D.OverlapCircle(transform.position, Mathf.Max(size.x, size.y), mask);
+            overlapFunc = () => Physics2D.OverlapCircle(transform.position, Mathf.Max(size.x, size.y)/2, mask);
         }
         else if (shape == Shape.CapsuleVertical)
         {
@@ -91,23 +92,18 @@ public class GroundTargeterScript : MonoBehaviour, ICollidingUnit
             timer += Time.fixedDeltaTime;
             colorRef.a = .2f + ((timer/appearTime) * 0.8f);
             spriteRenderer.color = colorRef;
-            //Debug.Log(timer);
         }
         //Do the thing
-        //Debug.Log("Boom");
-
         //LayerMask mask = LayerMask.GetMask("Player");
         Collider2D hit = null;
-
-        //Debug.Log("activating");
-
-        if(activeTime > 0)
+        if(activeTime > 0)//it makes more sense to store active times as tick counts so there arent mismatching active times with tick rates, such as 0.7 active with 0.5 tick
         {
             spriteRenderer.color = activeColor;
             timer = activeTime;
             while (timer > 0)
             {
                 hit = overlapFunc();
+                //Debug.DrawLine(transform.position, transform.position + (transform.up * Mathf.Max(size.x, size.y)/2), Color.white, 10);
                 if (hit)
                 {
                     abilityRef.ApplyComponentEffects();

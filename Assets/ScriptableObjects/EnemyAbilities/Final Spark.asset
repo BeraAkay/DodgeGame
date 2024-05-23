@@ -13,12 +13,12 @@ MonoBehaviour:
   m_Name: Final Spark
   m_EditorClassIdentifier: 
   name: 
-  cooldown: 4
+  cooldown: 10
   targetingInformation:
     type: 3
     collidingUnit: {fileID: 5803786116707560268, guid: b03465d0dcbdb8f47b6411dfe03c4010, type: 3}
   activeComponents:
-  - magnitude: 400
+  - magnitude: 200
     duration: 0
     type: 0
   passiveComponents: []

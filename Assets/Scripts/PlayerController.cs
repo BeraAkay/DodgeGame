@@ -1,15 +1,17 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.UI;
-using static Unity.IO.LowLevel.Unsafe.AsyncReadManagerMetrics;
+using Cinemachine;
 
 public class PlayerController : MonoBehaviour
 {
     [SerializeField]
+    PlayerVisuals playerVisualManager;
+
+    [SerializeField]
     int baseMovementSpeed, health;
+    [SerializeField]
     float currentHealth, movementSpeed;
 
     float msModifier;
@@ -27,7 +29,7 @@ public class PlayerController : MonoBehaviour
         get
         {
             mousePosition = Camera.main.ScreenToWorldPoint(playerInput.actions["TargetPosition"].ReadValue<Vector2>());
-            mousePosition.z = 0;
+            mousePosition.z = 0;//might need to change this to player.transform.z in the future if need be
             return mousePosition;
         }
     }
@@ -43,11 +45,13 @@ public class PlayerController : MonoBehaviour
     PlayerInput playerInput;
     InputActionMap actionMap;
 
-    Dictionary<string, Coroutine> buffs, debuffs;
+    Dictionary<string, Coroutine> buffs, debuffs;//change the coroutine into effectovertime structs that have their duration editable etc so its more oop and less spaghetti
 
-    bool rooted, stunned, stasis;//states
+    bool rooted, stunned, stasis, dashing;//player states
 
-    List<string> markedBy;
+    public bool invincible, god;
+
+    List<string> markedBy;//wont be used at this rate
 
     public static PlayerController Instance;
 
@@ -62,6 +66,8 @@ public class PlayerController : MonoBehaviour
 
     public CommandIndicator commandIndicator;
 
+    CinemachineImpulseSource impulseSource;
+
     // Start is called before the first frame update
     void Awake()
     {
@@ -73,6 +79,9 @@ public class PlayerController : MonoBehaviour
         {
             Destroy(this);
         }
+
+        playerVisualManager = GetComponent<PlayerVisuals>();
+        impulseSource = GetComponent<CinemachineImpulseSource>();
 
         SetUpInputs();
         InitStats();
@@ -105,21 +114,36 @@ public class PlayerController : MonoBehaviour
     #endregion
 
     #region Player Action Functions
-    public void Dash()
+    public void Dash(AbilityManager.AbilityInput input)
     {
+        if (rooted || stunned || stasis || dashing)
+        {
+            return;
+        }
+        dashing = true;
 
+        targetPosition = MousePosition;
+        oldPosition = transform.position;
+        targetPosition = Vector3.Lerp(oldPosition, targetPosition, (GameManager.distanceConversionRate * input.magnitude * input.duration)/Vector3.Distance(oldPosition, targetPosition));
+
+        Debug.DrawLine(oldPosition, targetPosition, Color.green, input.duration);
+
+        if (moveCoroutine != null)
+        {
+            StopCoroutine(moveCoroutine);
+        }
+
+        moveCoroutine = StartCoroutine(Dasher(input));
     }
     
 
     #region Movement Functions
     void Move()//modify this with parameters so this can be used for dashes too
     {
-        if (rooted || stunned)
+        if (rooted || stunned || stasis || dashing)
         {
             return;
         }
-
-        
 
         /*
         targetPosition = playerInput.actions["TargetPosition"].ReadValue<Vector2>();
@@ -129,7 +153,6 @@ public class PlayerController : MonoBehaviour
         */
         targetPosition = MousePosition;
         commandIndicator.IndicateLocation(targetPosition);
-        //Debug.Log(targetPosition);
 
         oldPosition = transform.position;
 
@@ -144,38 +167,78 @@ public class PlayerController : MonoBehaviour
 
     IEnumerator Mover()//modify this with parameters so this can be used for dashes too
     {
+        float start = Time.time;
         float distance = Vector3.Distance(oldPosition, targetPosition);
         float t = 0;
-        float tStep = 0.01f / (distance / movementSpeed);
+        float tStep = GameManager.distanceConversionRate / (distance / movementSpeed);
         while ((transform.position - targetPosition).magnitude > stopDistance)
         {
             t += tStep;
             transform.position = Vector3.Lerp(oldPosition, targetPosition, t);//lerp already clamps so no need to mathfMin it
             yield return new WaitForFixedUpdate();
         }
+        Debug.Log(Time.time - start);
+    }
+
+    IEnumerator Dasher(AbilityManager.AbilityInput input)
+    {
+        float tick = 0.01f;
+        float t = 0;
+        float tStep = GameManager.distanceConversionRate / (tick * input.duration);
+        while (t < 1)
+        {
+            t += tStep;
+            transform.position = Vector3.Lerp(oldPosition, targetPosition, t);//lerp already clamps so no need to mathfMin it
+            yield return new WaitForSeconds(tick);
+        }
+        dashing = false;
     }
     #endregion
     #endregion
 
     #region Player Stat Interactions
-    public void ApplyDamage(int damage)
+    public void ApplyDamage(float damage)
     {
+        if(currentHealth <= 0 || stasis || invincible || god)
+        {
+            return;
+        }
+
+        playerVisualManager.HitReaction();
+        playerVisualManager.FlashColor(Color.red);
+        CameraShaker.instance.Shake(impulseSource);
         currentHealth -= damage;
+
+        UIManager.instance.SetHealthBarFill(currentHealth / health);
+
+        if(currentHealth <= 0)
+        {
+            Die();
+        }
     }
 
     public void ApplyDamage(AbilityManager.AbilityInput input)
     {
-        currentHealth -= input.magnitude;
+        ApplyDamage(input.magnitude);
     }
 
-    public void ApplyHeal(int heal)
+    public void ApplyHeal(float heal)
     {
+        if (stasis)
+        {
+            return;
+        }
+
+        playerVisualManager.FlashColor(Color.green);
         currentHealth = Mathf.Min(health, currentHealth + heal);
+
+
+        UIManager.instance.SetHealthBarFill(currentHealth / health);
     }
 
     public void ApplyHeal(AbilityManager.AbilityInput input)
     {
-        currentHealth = Mathf.Min(health, currentHealth + input.magnitude);
+        ApplyHeal(input.magnitude);
     }
 
     /*
@@ -238,7 +301,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    public void RemoveAllDebuffs()
+    public void RemoveAllDebuffs()//TODO: fix this or call this with a cleansing func
     {
         foreach(string key in debuffs.Keys)
         {
@@ -261,9 +324,41 @@ public class PlayerController : MonoBehaviour
         debuffs.Remove(id);
     }
 
-    
+    public Coroutine HasDebuff(string id)
+    {
+        return debuffs.ContainsKey(id) ? debuffs[id] : null;
+    }
 
+    public void AddToBuffs(string id, Coroutine buffCoroutine)
+    {
+        buffs.Add(id, buffCoroutine);
+    }
+
+    public void RemoveFromBuffs(string id)
+    {
+        buffs.Remove(id);
+    }
+
+    public Coroutine HasBuff(string id)
+    {
+        return buffs.ContainsKey(id) ? buffs[id] : null;
+    }
+
+    void Die()
+    {
+        GameManager.instance.PlayerDeath();
+    }
 
 
     #endregion
+
+
+    public struct EffectOverTime
+    {
+        public string id;
+        public Coroutine coroutine;
+        
+
+    }
+
 }

@@ -18,7 +18,7 @@ MonoBehaviour:
     type: 0
     collidingUnit: {fileID: 1624321980334086216, guid: 5931187aaf1b8f44cacb7814ad054100, type: 3}
   activeComponents:
-  - magnitude: 0
+  - magnitude: 50
     duration: 0
     type: 0
   passiveComponents: []

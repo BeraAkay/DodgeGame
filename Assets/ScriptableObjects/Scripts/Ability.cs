@@ -23,14 +23,14 @@ public class Ability : ScriptableObject
     }
     public void Use()
     {
-
+        ApplyComponentEffects();
     }
 
     public void ApplyComponentEffects()
     {
         foreach(var component in activeComponents)
         {
-            component.InvokeComponent(name);
+            component.InvokeComponent(name+component.type.ToString());
         }
     }
 
