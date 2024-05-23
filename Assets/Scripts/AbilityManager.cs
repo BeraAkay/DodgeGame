@@ -1,11 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.Events;
-using UnityEngine.Windows;
 
 [DefaultExecutionOrder(0)]
 public class AbilityManager : MonoBehaviour
@@ -16,6 +12,8 @@ public class AbilityManager : MonoBehaviour
 
     public static Dictionary<AbilityComponent.Type, Action<AbilityInput>> componentDictionary;
 
+    [SerializeField]
+    static float tickRate = .5f;
 
     void Awake()
     {
@@ -27,7 +25,6 @@ public class AbilityManager : MonoBehaviour
         componentDictionary[AbilityComponent.Type.Stun] = Stun;
         componentDictionary[AbilityComponent.Type.Root] = Root;
         componentDictionary[AbilityComponent.Type.Mark] = Mark;
-        componentDictionary[AbilityComponent.Type.Spawn] = SpawnUnit;
         componentDictionary[AbilityComponent.Type.Slow] = Slow;
 
         //player
@@ -40,11 +37,6 @@ public class AbilityManager : MonoBehaviour
 
     }
 
-    void Update()
-    {
-
-    }
-
     #region Player Abilities
     void Heal(AbilityInput input)
     {
@@ -54,13 +46,12 @@ public class AbilityManager : MonoBehaviour
         }
         else//heal over time
         {
-            Coroutine buff = playerController.HasBuff(input.id);
-            if (buff != null)
-            {
-                StopCoroutine(buff);
-                playerController.RemoveFromBuffs(input.id);
-            }
-            StartCoroutine(EffectOverTime(input, playerController.ApplyHeal, () => playerController.RemoveFromBuffs(input.id)));
+            Effect effect = new Effect(
+             Effect.Type.Ticking,
+             () => playerController.ApplyHeal(input),
+             () => playerController.RemoveFromBuffs(input.id)
+             );
+            BuffTarget(input, effect);
         }
     }
 
@@ -76,26 +67,24 @@ public class AbilityManager : MonoBehaviour
 
     void Stasis(AbilityInput input)
     {
-        Coroutine buff = playerController.HasBuff(input.id);
-        if (buff != null)
-        {
-            StopCoroutine(buff);
-            playerController.RemoveFromBuffs(input.id);
-            playerController.Stasis(false);
-        }
-        StartCoroutine(EffectOverTime(input, playerController.Stasis, () => playerController.RemoveFromBuffs(input.id)));
+        Effect effect = new Effect(
+            Effect.Type.Status,
+            () => playerController.Stasis(true),
+            () => playerController.Stasis(false),
+            () => playerController.RemoveFromBuffs(input.id)
+            );
+        BuffTarget(input, effect);
     }
 
     void SpeedUp(AbilityInput input)
     {
-        Coroutine buff = playerController.HasBuff(input.id);
-        if (buff != null)
-        {
-            StopCoroutine(buff);
-            playerController.RemoveFromBuffs(input.id);
-            playerController.ModifyMovementSpeed(input, false);
-        }
-        StartCoroutine(EffectOverTime(input, playerController.ModifyMovementSpeed, () => playerController.RemoveFromBuffs(input.id)));
+        Effect effect = new Effect(
+            Effect.Type.Status,
+            () => playerController.ModifyMovementSpeed(input, true),
+            () => playerController.ModifyMovementSpeed(input, false),
+            () => playerController.RemoveFromBuffs(input.id)
+            );
+        BuffTarget(input, effect);
     }
 
     void Cleanse(AbilityInput input = null)
@@ -117,126 +106,117 @@ public class AbilityManager : MonoBehaviour
         {
             playerController.ApplyDamage(input.magnitude);
         }
-        else//damage over time
+        else//damage over time, untested
         {
             //MAYBE add a new variable called stackable and if the ability is stackable dont use this block, if its not stackable use the part etc etc
-            Coroutine debuff = playerController.HasDebuff(input.id);
-            if (debuff != null)
-            {
-                StopCoroutine(debuff);
-                playerController.RemoveFromDebuffs(input.id);
-            }
-            
-            playerController.AddToDebuffs(input.id, StartCoroutine(EffectOverTime(input, playerController.ApplyDamage, () => playerController.RemoveFromDebuffs(input.id))));
+            Effect tickingEffect = new Effect(
+                Effect.Type.Ticking,
+                () => playerController.ApplyDamage(input),
+                () => playerController.RemoveFromDebuffs(input.id)
+                );
+            DebuffTarget(input, tickingEffect);
         }
     }
 
-    void Stun(AbilityInput input)
+    void Stun(AbilityInput input)//untested
     {
-        Coroutine debuff = playerController.HasDebuff(input.id);
-        if (debuff != null)
-        {
-            StopCoroutine(debuff);
-            playerController.RemoveFromDebuffs(input.id);
-            playerController.Stun(false);
-        }
-        playerController.AddToDebuffs(input.id, StartCoroutine(EffectOverTime(input, playerController.Stun, () => playerController.RemoveFromDebuffs(input.id))));
+        Effect effect = new Effect(
+            Effect.Type.Status,
+            () => playerController.Stun(true),
+            () => playerController.Stun(false),
+            () => playerController.RemoveFromDebuffs(input.id)
+            );
+        DebuffTarget(input, effect);
     }
 
     void Root(AbilityInput input)
     {
-        Coroutine debuff = playerController.HasDebuff(input.id);
-        if (debuff != null)
-        {
-            StopCoroutine(debuff);
-            playerController.RemoveFromDebuffs(input.id);
-            playerController.Root(false);
-        }
-        playerController.AddToDebuffs(input.id, StartCoroutine(EffectOverTime(input, playerController.Root, () => playerController.RemoveFromDebuffs(input.id))));
+        Effect effect = new Effect(
+            Effect.Type.Status,
+            () => playerController.Root(true),
+            () => playerController.Root(false),
+            () => playerController.RemoveFromDebuffs(input.id)
+            );
+        DebuffTarget(input, effect);
     }
 
-    void Mark(AbilityInput input)
+    void Mark(AbilityInput input)//untested
     {
-        //StartCoroutine(MarkTracker(input.id, input.duration));
-        Coroutine debuff = playerController.HasDebuff(input.id);
-        if(debuff != null)
-        {
-            StopCoroutine(debuff);
-            playerController.RemoveFromDebuffs(input.id);
-            playerController.Mark(input, false);
-        }
-        playerController.AddToDebuffs(input.id, StartCoroutine(EffectOverTime(input, playerController.Mark, () => playerController.RemoveFromDebuffs(input.id))));
-    }
-
-    void SpawnUnit(AbilityInput input)//maybe make this into a targeting type so it can just use a prefab of the unit
-    {
-        //spawn the specific item using the id of the ability to pull from some sort of dictionary/db
+        Effect effect = new Effect(
+            Effect.Type.Status,
+            () => playerController.Mark(input, true),
+            () => playerController.Mark(input, false),
+            () => playerController.RemoveFromDebuffs(input.id)
+            );
+        DebuffTarget(input, effect);
     }
 
     void Slow(AbilityInput input)
     {
+        Effect effect = new Effect(
+            Effect.Type.Status,
+            () => playerController.ModifyMovementSpeed(input, false),
+            () => playerController.ModifyMovementSpeed(input, true),
+            () => playerController.RemoveFromDebuffs(input.id)
+            );
+        DebuffTarget(input, effect);
+    }
+    #endregion
+
+    #region Effect Over Time Functions
+    //callbacks are for removing the ability from the buff/debuff list when its done
+    IEnumerator EffectOverTime(AbilityInput input, Effect effect)
+    {
+        effect.Apply();
+        yield return new WaitForSeconds(input.duration);
+        effect.Undo();
+        effect.UnlistCallback();
+    }
+
+    IEnumerator TickingOverTime(AbilityInput input, Effect effect)
+    {
+        float remainingDuration = input.duration;
+        while (remainingDuration > 0)
+        {
+            effect.Apply();
+            yield return new WaitForSeconds(tickRate);
+            remainingDuration -= tickRate;
+        }
+        effect.UnlistCallback();
+    }
+
+    void BuffTarget(AbilityInput input, Effect effect)
+    {
+        Coroutine buff = playerController.HasBuff(input.id);
+        if (buff != null)
+        {
+            StopCoroutine(buff);
+            effect.UnlistCallback();
+            if (effect.Undo != null)
+                effect.Undo();//find a way to remove this and just edit buff time
+        }
+        if (effect.type == Effect.Type.Status)
+            buff = StartCoroutine(EffectOverTime(input, effect));
+        else
+            buff = StartCoroutine(TickingOverTime(input, effect));
+        playerController.AddToBuffs(input.id, buff);
+    }
+
+    void DebuffTarget(AbilityInput input, Effect effect)
+    {
         Coroutine debuff = playerController.HasDebuff(input.id);
         if (debuff != null)
         {
             StopCoroutine(debuff);
-            playerController.RemoveFromDebuffs(input.id);
-            playerController.ModifyMovementSpeed(input, true);
+            effect.UnlistCallback();
+            if(effect.Undo != null)
+                effect.Undo();//find a way to remove this and just edit debuff time
         }
-        input.magnitude = -input.magnitude;//TEST IF SLOWS WORK I DONT REMEMBER TESTING NOR DID THIS MAKE SENSE TO ME, cuz its already modified im modmovsped inside
-        //re looking at things its neede as effectovertime always claims positive, so yea, turn the actions into no parameter types with lambda and put inputs in the lambda funcs
-        //StartCoroutine(Slower(input.magnitude, input.duration));
-        playerController.AddToDebuffs(input.id, StartCoroutine(EffectOverTime(input, playerController.ModifyMovementSpeed)));
-    }
-    #endregion
-
-    #region Effect Over Time Coroutines
-    /*
-    IEnumerator Slower(int magnitude, int duration)
-    {
-        playerController.ModifyMovementSpeed(-magnitude);
-        yield return new WaitForSeconds(duration);
-        playerController.ModifyMovementSpeed(magnitude);
-    }
-
-    IEnumerator MarkTracker(string id, int duration)
-    { 
-        playerController.AddMark(id);
-        yield return new WaitForSeconds(duration);
-        playerController.RemoveMark(id);
-    }
-    */
-    //callbacks are for removing the ability from the buff/debuff list when its done
-    IEnumerator EffectOverTime(AbilityInput input, Action<AbilityInput, bool> effectFunc, Action callback = null)
-    {
-        effectFunc(input, true);
-        yield return new WaitForSeconds(input.duration);
-        effectFunc(input, false);
-        if(callback != null)
-        {
-            callback();
-        }
-    }
-
-    IEnumerator EffectOverTime(AbilityInput input, Action<AbilityInput> effectFunc, Action callback = null)
-    {
-        effectFunc(input);
-        yield return new WaitForSeconds(input.duration);
-        if (callback != null)
-        {
-            callback();
-        }
-
-    }
-
-    IEnumerator EffectOverTime(AbilityInput input, Action<bool> effectFunc, Action callback = null)
-    {
-        effectFunc(true);
-        yield return new WaitForSeconds(input.duration);
-        effectFunc(false);
-        if (callback != null)
-        {
-            callback();
-        }
+        if(effect.type == Effect.Type.Status)
+            debuff = StartCoroutine(EffectOverTime(input, effect));
+        else
+            debuff = StartCoroutine(TickingOverTime(input, effect));
+        playerController.AddToDebuffs(input.id, debuff);
     }
 
     #endregion
@@ -250,13 +230,54 @@ public class AbilityManager : MonoBehaviour
     public class AbilityComponent
     {
         //public string name;
-        public float magnitude, duration;
-        public enum Type { Damage, Stun, Root, Mark, Spawn, Slow, Heal, SpeedUp, Blink, Stasis, Cleanse, Dash };
-        public Type type;
+        [SerializeField]
+        float magnitude, duration;
 
-        public void InvokeComponent(string id)
+        public float Magnitude
+        {
+            get { return magnitude; }
+        }
+        public float Duration
+        {
+            get { return duration;}
+        }
+        public enum Type { Damage, Stun, Root, Mark, Slow, Heal, SpeedUp, Blink, Stasis, Cleanse, Dash };
+        [SerializeField]
+        Type type;
+        public Type CompType
+        {
+            get { return type; }
+        }
+
+        [HideInInspector]
+        public readonly List<Type> invokeEachTick = new List<Type> { Type.Damage, Type.Heal };
+
+        [HideInInspector]
+        public readonly List<Type> statuses = new List<Type> { Type.Stun, Type.Root, Type.Mark, Type.Slow, Type.SpeedUp, Type.Stasis};
+        public void Apply(string id)
+        {
+            //Debug.Log("Applying Ability Component: " + type.ToString() +" Magnitude: " + magnitude.ToString() + " Duration: " + duration.ToString());
+            componentDictionary[type].Invoke(new AbilityInput(id, magnitude, duration));
+        }
+
+        public void ForceInvoke(string id)
         {
             componentDictionary[type].Invoke(new AbilityInput(id, magnitude, duration));
+        }
+    }
+
+    class Effect
+    {
+        public Action Apply, UnlistCallback, Undo;
+        public enum Type { Status, Ticking };//idea, ticking effects should stack maybe?
+        public Type type;
+
+        public Effect(Type type, Action apply, Action unlistCallback, Action undo = null)
+        {
+            this.type = type;
+            Apply = apply;
+            UnlistCallback = unlistCallback;
+            Undo = undo;//this should not exist when ticking, maybe i can make 2 constructors if needed and if it has undo it is set to status, otherwise its ticking
         }
     }
 

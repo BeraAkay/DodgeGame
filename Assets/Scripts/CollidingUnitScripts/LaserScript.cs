@@ -74,7 +74,7 @@ public class LaserScript : MonoBehaviour, ICollidingUnit //this seems useless, a
                 if (hit)
                 {
                     Debug.Log("hit player");
-                    abilityRef.ApplyComponentEffects();
+                    abilityRef.ApplyComponentEffects(hit.gameObject);
                 }
                 yield return new WaitForSeconds(tickRate);
                 timer -= tickRate;
@@ -86,7 +86,7 @@ public class LaserScript : MonoBehaviour, ICollidingUnit //this seems useless, a
             if (hit)
             {
                 Debug.Log("hit player");
-                abilityRef.ApplyComponentEffects();
+                abilityRef.ApplyComponentEffects(hit.gameObject);
             }
         }
 

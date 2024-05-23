@@ -1861,7 +1861,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &816570041
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1874,7 +1874,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b9b022f89a365843b5042871dae19fb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ability: {fileID: 11400000, guid: 3602734becbe53c49a501268d3e34436, type: 2}
+  ability: {fileID: 11400000, guid: 0f745ab451a2acb4d8baa1af814d7d5c, type: 2}
 --- !u!212 &816570042
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -3459,7 +3459,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1627789645
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3472,7 +3472,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b9b022f89a365843b5042871dae19fb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ability: {fileID: 11400000, guid: f3ac19b0d282ec040a05c5dad95e097c, type: 2}
+  ability: {fileID: 11400000, guid: 67b8008fef501a14ea24ec1c8338d92a, type: 2}
 --- !u!212 &1627789646
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -4461,12 +4461,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerVisualManager: {fileID: 0}
-  baseMovementSpeed: 5
+  effectHandler: {fileID: 0}
+  baseMovementSpeed: 300
   health: 1000
+  currentHealth: 0
+  movementSpeed: 0
   stopDistance: 0.1
   ability: {fileID: 11400000, guid: c20812a87c62b1c44be9ae514feb9e42, type: 2}
   special1: {fileID: 11400000, guid: 579543cfea437b24f80eb98b343ce91e, type: 2}
   special2: {fileID: 11400000, guid: a721388f5eef3ae44ad771245222bf8e, type: 2}
+  effectList: []
   invincible: 1
   god: 0
   commandIndicator: {fileID: 355092920}

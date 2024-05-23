@@ -20,5 +20,5 @@ MonoBehaviour:
   activeComponents:
   - magnitude: 0
     duration: 2
-    type: 9
+    type: 8
   passiveComponents: []

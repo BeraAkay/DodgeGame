@@ -82,7 +82,7 @@ public class ProjectileScript : MonoBehaviour, ICollidingUnit
         if(maximumHitCount >= hitCount++)
         {
             //do hit stuff
-            abilityRef.ApplyComponentEffects();
+            abilityRef.ApplyComponentEffects(collision.gameObject);
         }
         if (maximumHitCount <= hitCount)
         {

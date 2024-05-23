@@ -47,6 +47,8 @@ public class PlayerController : MonoBehaviour
 
     Dictionary<string, Coroutine> buffs, debuffs;//change the coroutine into effectovertime structs that have their duration editable etc so its more oop and less spaghetti
 
+    public List<string> effectList;
+
     bool rooted, stunned, stasis, dashing;//player states
 
     public bool invincible, god;
@@ -85,12 +87,43 @@ public class PlayerController : MonoBehaviour
 
         SetUpInputs();
         InitStats();
+
+
+
+        StartCoroutine(ListUpdater());
+        Debug.Log("Conversion Rate: " + GameManager.distanceConversionRate);
+        Debug.Log("Movement Update Rate: " + GameManager.movementUpdateRate);
     }
 
     // Update is called once per frame
     void Update()
     {
     }
+
+    #region Debug Functions
+    void UpdateEffectList()
+    {
+        effectList = new List<string>();
+        foreach(string key in buffs.Keys)
+        {
+            effectList.Add(key);
+        }
+        foreach(string key in debuffs.Keys)
+        {
+            effectList.Add(key);
+        }
+    }
+    IEnumerator ListUpdater()
+    {
+        while (true)
+        {
+            UpdateEffectList();
+            yield return new WaitForSeconds(0.25f);
+        }
+    }
+
+    #endregion
+
     #region Initialization Functions
     void SetUpInputs()
     {
@@ -116,6 +149,10 @@ public class PlayerController : MonoBehaviour
     #region Player Action Functions
     public void Dash(AbilityManager.AbilityInput input)
     {
+        /*
+         * input.magnitude = > Distance (needs to be converted)
+         * input.duration = > travelTime
+         */
         if (rooted || stunned || stasis || dashing)
         {
             return;
@@ -124,7 +161,7 @@ public class PlayerController : MonoBehaviour
 
         targetPosition = MousePosition;
         oldPosition = transform.position;
-        targetPosition = Vector3.Lerp(oldPosition, targetPosition, (GameManager.distanceConversionRate * input.magnitude * input.duration)/Vector3.Distance(oldPosition, targetPosition));
+        targetPosition = Vector3.Lerp(oldPosition, targetPosition, (GameManager.distanceConversionRate * input.magnitude)/Vector3.Distance(oldPosition, targetPosition));
 
         Debug.DrawLine(oldPosition, targetPosition, Color.green, input.duration);
 
@@ -167,31 +204,32 @@ public class PlayerController : MonoBehaviour
 
     IEnumerator Mover()//modify this with parameters so this can be used for dashes too
     {
-        float start = Time.time;
         float distance = Vector3.Distance(oldPosition, targetPosition);
         float t = 0;
-        float tStep = GameManager.distanceConversionRate / (distance / movementSpeed);
+        float tStep = (movementSpeed * GameManager.distanceConversionRate) / distance;//RAW tStep, needs to be multed by elapsed time each wait since its not reliable
+        float start = Time.time;
         while ((transform.position - targetPosition).magnitude > stopDistance)
         {
-            t += tStep;
+            t += tStep * Time.fixedDeltaTime;
             transform.position = Vector3.Lerp(oldPosition, targetPosition, t);//lerp already clamps so no need to mathfMin it
             yield return new WaitForFixedUpdate();
         }
-        Debug.Log(Time.time - start);
+        Debug.Log("Distance: " + Vector3.Distance(oldPosition, transform.position) + " Time: " + (Time.time - start));
     }
 
     IEnumerator Dasher(AbilityManager.AbilityInput input)
     {
-        float tick = 0.01f;
         float t = 0;
-        float tStep = GameManager.distanceConversionRate / (tick * input.duration);
+        float tStep = 1 / input.duration;//RAW tStep, needs to be multed by elapsed time each wait since its not reliable
+        float start = Time.time;
         while (t < 1)
         {
-            t += tStep;
+            t += tStep * Time.fixedDeltaTime;
             transform.position = Vector3.Lerp(oldPosition, targetPosition, t);//lerp already clamps so no need to mathfMin it
-            yield return new WaitForSeconds(tick);
+            yield return new WaitForFixedUpdate();
         }
         dashing = false;
+        Debug.Log("Distance: " + Vector3.Distance(oldPosition, transform.position) + " Time: " + (Time.time - start));
     }
     #endregion
     #endregion
@@ -256,7 +294,7 @@ public class PlayerController : MonoBehaviour
     */
     public void ModifyMovementSpeed(AbilityManager.AbilityInput input, bool isPositive)
     {
-        msModifier += isPositive ? input.magnitude : -input.magnitude;
+        msModifier += isPositive ? input.magnitude : -input.magnitude;//add a mult/percentage version for this.
         movementSpeed = msModifier + baseMovementSpeed;
     }
 

@@ -19,7 +19,7 @@ MonoBehaviour:
     collidingUnit: {fileID: 9138986177031594840, guid: 5e5fbf46ca0333941845c3f632c1c388, type: 3}
   activeComponents:
   - magnitude: 30
-    duration: 0
+    duration: 2
     type: 0
   - magnitude: 0
     duration: 2

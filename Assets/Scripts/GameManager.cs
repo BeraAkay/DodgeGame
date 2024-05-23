@@ -7,6 +7,9 @@ public class GameManager : MonoBehaviour
     public static GameManager instance;
 
     public static readonly float distanceConversionRate = 0.01f;
+    public static readonly float movementUpdateRate = 0.015f;
+
+    public static GameObject Player;
     void Awake()
     {
         if(instance == null)
@@ -17,7 +20,7 @@ public class GameManager : MonoBehaviour
         {
             Destroy(this);
         }
-
+        Player = GameObject.Find("Player");
 
     }
 

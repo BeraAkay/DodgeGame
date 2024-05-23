@@ -26,13 +26,14 @@ public class Ability : ScriptableObject
         ApplyComponentEffects();
     }
 
-    public void ApplyComponentEffects()
+    public void ApplyComponentEffects(GameObject obj = null)
     {
         foreach(var component in activeComponents)
         {
-            component.InvokeComponent(name+component.type.ToString());
+            component.Apply(name + "_" + component.CompType.ToString());
         }
     }
+
 
     public void ActivatePassives(bool flag)
     {

@@ -106,7 +106,7 @@ public class GroundTargeterScript : MonoBehaviour, ICollidingUnit
                 //Debug.DrawLine(transform.position, transform.position + (transform.up * Mathf.Max(size.x, size.y)/2), Color.white, 10);
                 if (hit)
                 {
-                    abilityRef.ApplyComponentEffects();
+                    abilityRef.ApplyComponentEffects(hit.gameObject);
                 }
                 yield return new WaitForSeconds(tickRate);
                 timer -= tickRate;
@@ -117,7 +117,7 @@ public class GroundTargeterScript : MonoBehaviour, ICollidingUnit
             hit = overlapFunc();//test it
             if (hit)
             {
-                abilityRef.ApplyComponentEffects();
+                abilityRef.ApplyComponentEffects(hit.gameObject);
             }
         }
 
