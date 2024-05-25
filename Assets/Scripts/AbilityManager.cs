@@ -1,11 +1,14 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 
 [DefaultExecutionOrder(0)]
 public class AbilityManager : MonoBehaviour
 {
+    public static AbilityManager instance;
+
     public List<Ability> projectiles;
 
     public PlayerController playerController;
@@ -17,6 +20,15 @@ public class AbilityManager : MonoBehaviour
 
     void Awake()
     {
+        if(instance == null)
+        {
+            instance = this;
+        }
+        else
+        {
+            Destroy(this);
+        }
+
         playerController = FindAnyObjectByType<PlayerController>();
 
         componentDictionary = new Dictionary<AbilityComponent.Type, Action<AbilityInput>>();
@@ -49,7 +61,7 @@ public class AbilityManager : MonoBehaviour
             Effect effect = new Effect(
              Effect.Type.Ticking,
              () => playerController.ApplyHeal(input),
-             () => playerController.RemoveFromBuffs(input.id)
+             (id) => playerController.RemoveFromBuffs(id)
              );
             BuffTarget(input, effect);
         }
@@ -57,12 +69,7 @@ public class AbilityManager : MonoBehaviour
 
     void Blink(AbilityInput input)
     {
-        Vector3 newPosition = Vector3.zero;
-        newPosition.z = playerController.transform.position.z;
-        //calculate new position using the mouseposition and distance and prob just lerp the vector.
-
-
-        playerController.transform.position = newPosition;
+        playerController.Blink(input);
     }
 
     void Stasis(AbilityInput input)
@@ -70,8 +77,8 @@ public class AbilityManager : MonoBehaviour
         Effect effect = new Effect(
             Effect.Type.Status,
             () => playerController.Stasis(true),
-            () => playerController.Stasis(false),
-            () => playerController.RemoveFromBuffs(input.id)
+            (id) => playerController.RemoveFromBuffs(id),
+            () => playerController.Stasis(false)
             );
         BuffTarget(input, effect);
     }
@@ -81,8 +88,8 @@ public class AbilityManager : MonoBehaviour
         Effect effect = new Effect(
             Effect.Type.Status,
             () => playerController.ModifyMovementSpeed(input, true),
-            () => playerController.ModifyMovementSpeed(input, false),
-            () => playerController.RemoveFromBuffs(input.id)
+            (id) => playerController.RemoveFromBuffs(id),
+            () => playerController.ModifyMovementSpeed(input, false)
             );
         BuffTarget(input, effect);
     }
@@ -112,7 +119,7 @@ public class AbilityManager : MonoBehaviour
             Effect tickingEffect = new Effect(
                 Effect.Type.Ticking,
                 () => playerController.ApplyDamage(input),
-                () => playerController.RemoveFromDebuffs(input.id)
+                (id) => playerController.RemoveFromDebuffs(id)
                 );
             DebuffTarget(input, tickingEffect);
         }
@@ -123,8 +130,8 @@ public class AbilityManager : MonoBehaviour
         Effect effect = new Effect(
             Effect.Type.Status,
             () => playerController.Stun(true),
-            () => playerController.Stun(false),
-            () => playerController.RemoveFromDebuffs(input.id)
+            (id) => playerController.RemoveFromDebuffs(id),
+            () => playerController.Stun(false)
             );
         DebuffTarget(input, effect);
     }
@@ -134,8 +141,8 @@ public class AbilityManager : MonoBehaviour
         Effect effect = new Effect(
             Effect.Type.Status,
             () => playerController.Root(true),
-            () => playerController.Root(false),
-            () => playerController.RemoveFromDebuffs(input.id)
+            (id) => playerController.RemoveFromDebuffs(id),
+            () => playerController.Root(false)
             );
         DebuffTarget(input, effect);
     }
@@ -145,8 +152,8 @@ public class AbilityManager : MonoBehaviour
         Effect effect = new Effect(
             Effect.Type.Status,
             () => playerController.Mark(input, true),
-            () => playerController.Mark(input, false),
-            () => playerController.RemoveFromDebuffs(input.id)
+            (id) => playerController.RemoveFromDebuffs(id),
+            () => playerController.Mark(input, false)
             );
         DebuffTarget(input, effect);
     }
@@ -156,8 +163,8 @@ public class AbilityManager : MonoBehaviour
         Effect effect = new Effect(
             Effect.Type.Status,
             () => playerController.ModifyMovementSpeed(input, false),
-            () => playerController.ModifyMovementSpeed(input, true),
-            () => playerController.RemoveFromDebuffs(input.id)
+            (id) => playerController.RemoveFromDebuffs(id),
+            () => playerController.ModifyMovementSpeed(input, true)
             );
         DebuffTarget(input, effect);
     }
@@ -170,7 +177,7 @@ public class AbilityManager : MonoBehaviour
         effect.Apply();
         yield return new WaitForSeconds(input.duration);
         effect.Undo();
-        effect.UnlistCallback();
+        effect.UnlistCallback(input.id);
     }
 
     IEnumerator TickingOverTime(AbilityInput input, Effect effect)
@@ -182,41 +189,66 @@ public class AbilityManager : MonoBehaviour
             yield return new WaitForSeconds(tickRate);
             remainingDuration -= tickRate;
         }
-        effect.UnlistCallback();
+        effect.UnlistCallback(input.id);
     }
 
     void BuffTarget(AbilityInput input, Effect effect)
     {
-        Coroutine buff = playerController.HasBuff(input.id);
-        if (buff != null)
+        EffectInfo buffInfo = playerController.HasBuff(input.id);
+        
+        if(buffInfo != null && buffInfo.coroutine != null)
         {
-            StopCoroutine(buff);
-            effect.UnlistCallback();
-            if (effect.Undo != null)
-                effect.Undo();//find a way to remove this and just edit buff time
+            effect.UnlistCallback(input.id);
         }
+
+        Coroutine buffCoroutine;
         if (effect.type == Effect.Type.Status)
-            buff = StartCoroutine(EffectOverTime(input, effect));
+        {
+            buffCoroutine = StartCoroutine(EffectOverTime(input, effect));
+        }
         else
-            buff = StartCoroutine(TickingOverTime(input, effect));
-        playerController.AddToBuffs(input.id, buff);
+        {
+            buffCoroutine = StartCoroutine(TickingOverTime(input, effect));
+        }
+
+        buffInfo = new EffectInfo(buffCoroutine, effect);
+        playerController.AddToBuffs(input.id, buffInfo);
     }
 
     void DebuffTarget(AbilityInput input, Effect effect)
     {
-        Coroutine debuff = playerController.HasDebuff(input.id);
-        if (debuff != null)
+        EffectInfo debuffInfo = playerController.HasDebuff(input.id);
+
+        if (debuffInfo != null && debuffInfo.coroutine != null)
         {
-            StopCoroutine(debuff);
-            effect.UnlistCallback();
-            if(effect.Undo != null)
-                effect.Undo();//find a way to remove this and just edit debuff time
+            effect.UnlistCallback(input.id);
         }
+
+        Coroutine coroutine;
         if(effect.type == Effect.Type.Status)
-            debuff = StartCoroutine(EffectOverTime(input, effect));
+        {
+            coroutine = StartCoroutine(EffectOverTime(input, effect));
+        }
         else
-            debuff = StartCoroutine(TickingOverTime(input, effect));
-        playerController.AddToDebuffs(input.id, debuff);
+        {
+            coroutine = StartCoroutine(TickingOverTime(input, effect));
+        }
+
+        debuffInfo = new EffectInfo(coroutine, effect);
+        playerController.AddToDebuffs(input.id, debuffInfo);
+    }
+
+    //this is needed to avoid an apparently harmless error msg "Coroutine continue failure" when cleansing since coroutines need to be stopped in the script they are created.
+    //This might be avoidable via changing the way yield new waitfor (x)
+    //into a loop that tracks the time instead of a waitforsec with big X
+    //that would reduce class dependency i guess??
+    //but in this project it does not seem necessary, also stopping via ienumerator also works apparently
+    public void CoroutineStopper(Coroutine coroutine)
+    {
+        if(coroutine != null)
+        {
+            StopCoroutine(coroutine);
+        }
     }
 
     #endregion
@@ -266,18 +298,31 @@ public class AbilityManager : MonoBehaviour
         }
     }
 
-    class Effect
+    public class Effect
     {
-        public Action Apply, UnlistCallback, Undo;
+        public Action Apply, Undo;
+        public Action<string> UnlistCallback;
         public enum Type { Status, Ticking };//idea, ticking effects should stack maybe?
         public Type type;
 
-        public Effect(Type type, Action apply, Action unlistCallback, Action undo = null)
+        public Effect(Type type, Action apply, Action<string> unlistCallback, Action undo = null)
         {
             this.type = type;
             Apply = apply;
             UnlistCallback = unlistCallback;
             Undo = undo;//this should not exist when ticking, maybe i can make 2 constructors if needed and if it has undo it is set to status, otherwise its ticking
+        }
+    }
+    public class EffectInfo
+    {
+        //public string id;
+        public Coroutine coroutine;
+        public Effect effect;
+        
+        public EffectInfo(Coroutine crt, Effect eff)
+        {
+            coroutine = crt;
+            effect = eff;
         }
     }
 

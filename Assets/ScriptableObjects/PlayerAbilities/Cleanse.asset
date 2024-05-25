@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3cac85d3fb38beb4bb877aeb93670147, type: 3}
-  m_Name: Blink
+  m_Name: Cleanse
   m_EditorClassIdentifier: 
   name: 
   cooldown: 0
@@ -18,7 +18,7 @@ MonoBehaviour:
     type: 4
     collidingUnit: {fileID: 0}
   activeComponents:
-  - magnitude: 300
+  - magnitude: 0
     duration: 0
-    type: 7
+    type: 9
   passiveComponents: []

@@ -45,7 +45,7 @@ public class PlayerController : MonoBehaviour
     PlayerInput playerInput;
     InputActionMap actionMap;
 
-    Dictionary<string, Coroutine> buffs, debuffs;//change the coroutine into effectovertime structs that have their duration editable etc so its more oop and less spaghetti
+    Dictionary<string, AbilityManager.EffectInfo> buffs, debuffs;//change the coroutine into effectovertime structs that have their duration editable etc so its more oop and less spaghetti
 
     public List<string> effectList;
 
@@ -140,8 +140,8 @@ public class PlayerController : MonoBehaviour
         movementSpeed = baseMovementSpeed;
         currentHealth = health;
         rooted = stunned = stasis = false;
-        buffs = new Dictionary<string, Coroutine>();
-        debuffs = new Dictionary<string, Coroutine>();
+        buffs = new Dictionary<string, AbilityManager.EffectInfo>();
+        debuffs = new Dictionary<string, AbilityManager.EffectInfo>();
         markedBy = new List<string>();
     }
     #endregion
@@ -163,7 +163,7 @@ public class PlayerController : MonoBehaviour
         oldPosition = transform.position;
         targetPosition = Vector3.Lerp(oldPosition, targetPosition, (GameManager.distanceConversionRate * input.magnitude)/Vector3.Distance(oldPosition, targetPosition));
 
-        Debug.DrawLine(oldPosition, targetPosition, Color.green, input.duration);
+        //Debug.DrawLine(oldPosition, targetPosition, Color.green, input.duration);
 
         if (moveCoroutine != null)
         {
@@ -173,8 +173,6 @@ public class PlayerController : MonoBehaviour
         moveCoroutine = StartCoroutine(Dasher(input));
     }
     
-
-    #region Movement Functions
     void Move()//modify this with parameters so this can be used for dashes too
     {
         if (rooted || stunned || stasis || dashing)
@@ -182,12 +180,6 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        /*
-        targetPosition = playerInput.actions["TargetPosition"].ReadValue<Vector2>();
-        targetPosition = Camera.main.ScreenToWorldPoint(targetPosition);
-
-        targetPosition.z = 0;
-        */
         targetPosition = MousePosition;
         commandIndicator.IndicateLocation(targetPosition);
 
@@ -200,7 +192,6 @@ public class PlayerController : MonoBehaviour
         }
         moveCoroutine = StartCoroutine(Mover());
     }
-
 
     IEnumerator Mover()//modify this with parameters so this can be used for dashes too
     {
@@ -231,7 +222,26 @@ public class PlayerController : MonoBehaviour
         dashing = false;
         Debug.Log("Distance: " + Vector3.Distance(oldPosition, transform.position) + " Time: " + (Time.time - start));
     }
-    #endregion
+
+    public void Blink(AbilityManager.AbilityInput input)
+    {
+        if (rooted || stunned || stasis || dashing)
+        {
+            return;
+        }
+
+        targetPosition = MousePosition;
+        oldPosition = transform.position;
+        targetPosition = Vector3.Lerp(oldPosition, targetPosition, (GameManager.distanceConversionRate * input.magnitude) / Vector3.Distance(oldPosition, targetPosition));
+
+        if (moveCoroutine != null)
+        {
+            StopCoroutine(moveCoroutine);
+        }
+
+        transform.position = targetPosition;
+    }
+
     #endregion
 
     #region Player Stat Interactions
@@ -339,45 +349,75 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    public void RemoveAllDebuffs()//TODO: fix this or call this with a cleansing func
+    public void RemoveAllDebuffs()
     {
-        foreach(string key in debuffs.Keys)
+        List<string> ids = new List<string>(debuffs.Keys);
+        foreach(string id in ids)
         {
-            Coroutine crt = debuffs[key];
-            if(crt != null)
-            {
-                StopCoroutine(crt);
-            }
-            debuffs.Remove(key);
+            RemoveFromDebuffs(id);
         }
     }
 
-    public void AddToDebuffs(string id, Coroutine debuffCoroutine)
+    public void AddToDebuffs(string id, AbilityManager.EffectInfo effectInfo)
     {
-        debuffs.Add(id, debuffCoroutine);
+        debuffs.Add(id, effectInfo);
     }
 
     public void RemoveFromDebuffs(string id)
     {
+        AbilityManager.EffectInfo effectInfo = debuffs[id];
+
+        if (effectInfo == null)
+        {
+            return;
+        }
+
+        if (effectInfo.coroutine != null)
+        {
+            AbilityManager.instance.CoroutineStopper(effectInfo.coroutine);
+        }
+        
+        if (effectInfo.effect.Undo != null)
+        {
+            effectInfo.effect.Undo();
+        }
+
         debuffs.Remove(id);
     }
 
-    public Coroutine HasDebuff(string id)
+    public AbilityManager.EffectInfo HasDebuff(string id)
     {
         return debuffs.ContainsKey(id) ? debuffs[id] : null;
     }
 
-    public void AddToBuffs(string id, Coroutine buffCoroutine)
+    public void AddToBuffs(string id, AbilityManager.EffectInfo effectInfo)
     {
-        buffs.Add(id, buffCoroutine);
+        buffs.Add(id, effectInfo);
     }
 
     public void RemoveFromBuffs(string id)
     {
+        AbilityManager.EffectInfo effectInfo = buffs[id];
+
+        if (effectInfo == null)
+        {
+            return;
+        }
+
+        if (effectInfo.coroutine != null)
+        {
+            AbilityManager.instance.CoroutineStopper(effectInfo.coroutine);
+        }
+
+        if (effectInfo.effect.Undo != null)
+        {
+            effectInfo.effect.Undo();
+        }
+
         buffs.Remove(id);
     }
 
-    public Coroutine HasBuff(string id)
+    public AbilityManager.EffectInfo HasBuff(string id)
     {
         return buffs.ContainsKey(id) ? buffs[id] : null;
     }
@@ -386,17 +426,5 @@ public class PlayerController : MonoBehaviour
     {
         GameManager.instance.PlayerDeath();
     }
-
-
     #endregion
-
-
-    public struct EffectOverTime
-    {
-        public string id;
-        public Coroutine coroutine;
-        
-
-    }
-
 }
