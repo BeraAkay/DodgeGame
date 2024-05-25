@@ -17,10 +17,12 @@ public class LaserScript : MonoBehaviour, ICollidingUnit //this seems useless, a
     Coroutine behaviour;
     SpriteRenderer spriteRenderer;
     Func<Collider2D> overlapFunc;
+    GameObject source;
 
-    public void Initialize(Vector3 target, Ability ability)
+    public void Initialize(Vector3 target, Ability abilityReference, GameObject source)
     {
-        abilityRef = ability;
+        this.source = source;
+        abilityRef = abilityReference;
 
         //transform.LookAt(target, Vector3.forward);
 
@@ -39,8 +41,9 @@ public class LaserScript : MonoBehaviour, ICollidingUnit //this seems useless, a
         spriteRenderer.color = baseColor;
 
 
-        LayerMask mask = LayerMask.GetMask("Player");
-        overlapFunc = () => Physics2D.OverlapBox(transform.position, size, transform.rotation.eulerAngles.z, mask);
+        //LayerMask mask = LayerMask.GetMask("Player");
+        //the overlap might need to turn into overlap all if this is going to be used in another project
+        overlapFunc = () => Physics2D.OverlapBox(transform.position, size, transform.rotation.eulerAngles.z, abilityRef.targetingInformation.LayerMask);
 
         behaviour = StartCoroutine(UnitBehaviour());
     }
@@ -71,10 +74,10 @@ public class LaserScript : MonoBehaviour, ICollidingUnit //this seems useless, a
             while (timer > 0)
             {
                 hit = overlapFunc();
-                if (hit)
+                if (hit.TryGetComponent(out ICharacter character))
                 {
                     Debug.Log("hit player");
-                    abilityRef.ApplyComponentEffects(hit.gameObject);
+                    abilityRef.ApplyComponentEffects(character, source);
                 }
                 yield return new WaitForSeconds(tickRate);
                 timer -= tickRate;
@@ -83,10 +86,10 @@ public class LaserScript : MonoBehaviour, ICollidingUnit //this seems useless, a
         else
         {
             hit = overlapFunc();//test it
-            if (hit)
+            if (hit.TryGetComponent(out ICharacter character))
             {
                 Debug.Log("hit player");
-                abilityRef.ApplyComponentEffects(hit.gameObject);
+                abilityRef.ApplyComponentEffects(character, source);
             }
         }
 

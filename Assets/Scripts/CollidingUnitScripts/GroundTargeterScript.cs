@@ -28,10 +28,13 @@ public class GroundTargeterScript : MonoBehaviour, ICollidingUnit
     //Dictionary<Shape, object> overlapDictionary;
     Func<Collider2D> overlapFunc;
 
-    public void Initialize(Vector3 target, Ability ability)
+    GameObject source;
+
+    public void Initialize(Vector3 target, Ability abilityReference, GameObject source)
     {
         //caching refs and base values
-        abilityRef = ability;
+        this.source = source;
+        abilityRef = abilityReference;
 
         transform.position = target;
 
@@ -58,23 +61,22 @@ public class GroundTargeterScript : MonoBehaviour, ICollidingUnit
         #endregion
 
         #region Overlap Function Setup
-        LayerMask mask = LayerMask.GetMask("Player");
         //this section can be turned into a dict and the dict can just be used to access the method in unitbehaviour but that is not necessary for the current needs
         if (shape == Shape.Circle)
         {
-            overlapFunc = () => Physics2D.OverlapCircle(transform.position, Mathf.Max(size.x, size.y)/2, mask);
+            overlapFunc = () => Physics2D.OverlapCircle(transform.position, Mathf.Max(size.x, size.y)/2, abilityRef.targetingInformation.LayerMask);
         }
         else if (shape == Shape.CapsuleVertical)
         {
-            overlapFunc = () => Physics2D.OverlapCapsule(transform.position, size, CapsuleDirection2D.Vertical, transform.rotation.eulerAngles.z, mask);
+            overlapFunc = () => Physics2D.OverlapCapsule(transform.position, size, CapsuleDirection2D.Vertical, transform.rotation.eulerAngles.z, abilityRef.targetingInformation.LayerMask);
         }
         else if (shape == Shape.CapsuleHorizontal)
         {
-            overlapFunc = () => Physics2D.OverlapCapsule(transform.position, size, CapsuleDirection2D.Horizontal, transform.rotation.eulerAngles.z, mask);
+            overlapFunc = () => Physics2D.OverlapCapsule(transform.position, size, CapsuleDirection2D.Horizontal, transform.rotation.eulerAngles.z, abilityRef.targetingInformation.LayerMask);
         }
         else
         {
-            overlapFunc = () => Physics2D.OverlapBox(transform.position, size, transform.rotation.eulerAngles.z, mask);
+            overlapFunc = () => Physics2D.OverlapBox(transform.position, size, transform.rotation.eulerAngles.z, abilityRef.targetingInformation.LayerMask);
         }
         #endregion
 
@@ -104,9 +106,9 @@ public class GroundTargeterScript : MonoBehaviour, ICollidingUnit
             {
                 hit = overlapFunc();
                 //Debug.DrawLine(transform.position, transform.position + (transform.up * Mathf.Max(size.x, size.y)/2), Color.white, 10);
-                if (hit)
+                if (hit.TryGetComponent(out ICharacter character))
                 {
-                    abilityRef.ApplyComponentEffects(hit.gameObject);
+                    abilityRef.ApplyComponentEffects(character, source);
                 }
                 yield return new WaitForSeconds(tickRate);
                 timer -= tickRate;
@@ -115,9 +117,9 @@ public class GroundTargeterScript : MonoBehaviour, ICollidingUnit
         else
         {
             hit = overlapFunc();//test it
-            if (hit)
+            if (hit.TryGetComponent(out ICharacter character))
             {
-                abilityRef.ApplyComponentEffects(hit.gameObject);
+                abilityRef.ApplyComponentEffects(character, source);
             }
         }
 

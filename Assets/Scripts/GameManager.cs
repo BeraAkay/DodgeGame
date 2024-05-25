@@ -21,7 +21,6 @@ public class GameManager : MonoBehaviour
             Destroy(this);
         }
         Player = GameObject.Find("Player");
-
     }
 
     void Update()

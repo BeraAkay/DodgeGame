@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
+using static Unity.VisualScripting.Member;
 
 [CreateAssetMenu]
 public class Ability : ScriptableObject
@@ -15,22 +16,22 @@ public class Ability : ScriptableObject
     public AbilityManager.AbilityComponent[] activeComponents;
 
     public AbilityManager.AbilityComponent[] passiveComponents;
-    public void Use(Transform userTransform, Vector3 target = default(Vector3))
+    public void Use(GameObject source, Vector3 targetPosition = default)
     {
         //instantiate collidingUnit and give it the activeComponents
-        Instantiate(targetingInformation.collidingUnit, userTransform).GetComponent<ICollidingUnit>().Initialize(target, this);
+        Instantiate(targetingInformation.collidingUnit, source.transform).GetComponent<ICollidingUnit>().Initialize(targetPosition, this, source);
 
     }
-    public void Use()
+    public void Use(ICharacter target, GameObject source)
     {
-        ApplyComponentEffects();
+        ApplyComponentEffects(target, source);
     }
 
-    public void ApplyComponentEffects(GameObject obj = null)
+    public void ApplyComponentEffects(ICharacter target, GameObject source)
     {
         foreach(var component in activeComponents)
         {
-            component.Apply(name + "_" + component.CompType.ToString());
+            component.Apply(name + "_" + component.CompType.ToString(), target, source);
         }
     }
 

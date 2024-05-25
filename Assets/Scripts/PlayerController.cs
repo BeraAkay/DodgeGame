@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using Cinemachine;
 
-public class PlayerController : MonoBehaviour
+public class PlayerController : MonoBehaviour, ICharacter
 {
     [SerializeField]
     PlayerVisuals playerVisualManager;
@@ -14,7 +14,8 @@ public class PlayerController : MonoBehaviour
     [SerializeField]
     float currentHealth, movementSpeed;
 
-    float msModifier;
+    float msModifierFlat = 0;
+    float msModifierMult = 1;
 
     [SerializeField]
     float stopDistance;
@@ -129,9 +130,9 @@ public class PlayerController : MonoBehaviour
     {
         playerInput = GetComponent<PlayerInput>();
         playerInput.actions["MoveCommand"].performed += ctx => Move();
-        playerInput.actions["UseAbility"].performed += ctx => ability.Use();
-        playerInput.actions["UseSpecial1"].performed += ctx => special1.Use();
-        playerInput.actions["UseSpecial2"].performed += ctx => special2.Use();
+        playerInput.actions["UseAbility"].performed += ctx => ability.Use(this, gameObject);
+        playerInput.actions["UseSpecial1"].performed += ctx => special1.Use(this, gameObject);
+        playerInput.actions["UseSpecial2"].performed += ctx => special2.Use(this, gameObject);
 
     }
     
@@ -158,18 +159,15 @@ public class PlayerController : MonoBehaviour
             return;
         }
         dashing = true;
-
         targetPosition = MousePosition;
         oldPosition = transform.position;
         targetPosition = Vector3.Lerp(oldPosition, targetPosition, (GameManager.distanceConversionRate * input.magnitude)/Vector3.Distance(oldPosition, targetPosition));
-
         //Debug.DrawLine(oldPosition, targetPosition, Color.green, input.duration);
 
         if (moveCoroutine != null)
         {
             StopCoroutine(moveCoroutine);
         }
-
         moveCoroutine = StartCoroutine(Dasher(input));
     }
     
@@ -198,29 +196,29 @@ public class PlayerController : MonoBehaviour
         float distance = Vector3.Distance(oldPosition, targetPosition);
         float t = 0;
         float tStep = (movementSpeed * GameManager.distanceConversionRate) / distance;//RAW tStep, needs to be multed by elapsed time each wait since its not reliable
-        float start = Time.time;
+        //float start = Time.time;
         while ((transform.position - targetPosition).magnitude > stopDistance)
         {
             t += tStep * Time.fixedDeltaTime;
-            transform.position = Vector3.Lerp(oldPosition, targetPosition, t);//lerp already clamps so no need to mathfMin it
+            transform.position = Vector3.Lerp(oldPosition, targetPosition, t);//regular lerp already clamps t 0-1 so no need to mathfMin it
             yield return new WaitForFixedUpdate();
         }
-        Debug.Log("Distance: " + Vector3.Distance(oldPosition, transform.position) + " Time: " + (Time.time - start));
+        //Debug.Log("Distance: " + Vector3.Distance(oldPosition, transform.position) + " Time: " + (Time.time - start));
     }
 
     IEnumerator Dasher(AbilityManager.AbilityInput input)
     {
         float t = 0;
         float tStep = 1 / input.duration;//RAW tStep, needs to be multed by elapsed time each wait since its not reliable
-        float start = Time.time;
+        //float start = Time.time;
         while (t < 1)
         {
             t += tStep * Time.fixedDeltaTime;
-            transform.position = Vector3.Lerp(oldPosition, targetPosition, t);//lerp already clamps so no need to mathfMin it
+            transform.position = Vector3.Lerp(oldPosition, targetPosition, t);//regular lerp already clamps t 0-1 so no need to mathfMin it
             yield return new WaitForFixedUpdate();
         }
         dashing = false;
-        Debug.Log("Distance: " + Vector3.Distance(oldPosition, transform.position) + " Time: " + (Time.time - start));
+        //Debug.Log("Distance: " + Vector3.Distance(oldPosition, transform.position) + " Time: " + (Time.time - start));
     }
 
     public void Blink(AbilityManager.AbilityInput input)
@@ -265,11 +263,6 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    public void ApplyDamage(AbilityManager.AbilityInput input)
-    {
-        ApplyDamage(input.magnitude);
-    }
-
     public void ApplyHeal(float heal)
     {
         if (stasis)
@@ -282,11 +275,6 @@ public class PlayerController : MonoBehaviour
 
 
         UIManager.instance.SetHealthBarFill(currentHealth / health);
-    }
-
-    public void ApplyHeal(AbilityManager.AbilityInput input)
-    {
-        ApplyHeal(input.magnitude);
     }
 
     /*
@@ -302,13 +290,19 @@ public class PlayerController : MonoBehaviour
         }
     }
     */
-    public void ModifyMovementSpeed(AbilityManager.AbilityInput input, bool isPositive)
+    public void ModifyMSMult(float value)
     {
-        msModifier += isPositive ? input.magnitude : -input.magnitude;//add a mult/percentage version for this.
-        movementSpeed = msModifier + baseMovementSpeed;
+        msModifierMult *= value;//add a mult/percentage version for this.
+        movementSpeed = (msModifierFlat + baseMovementSpeed) * msModifierMult;
     }
 
-    public void Root(bool flag)
+    public void ModifyMSFlat(float value)
+    {
+        msModifierFlat += value;//add a mult/percentage version for this.
+        movementSpeed = (msModifierFlat + baseMovementSpeed) * msModifierMult;
+    }
+
+    public void SetRooted(bool flag)
     {
         if (flag && moveCoroutine != null)
         {
@@ -317,7 +311,7 @@ public class PlayerController : MonoBehaviour
         rooted = flag;
     }
 
-    public void Stun(bool flag)
+    public void SetStunned(bool flag)
     {
         if (flag)
         {
@@ -326,13 +320,23 @@ public class PlayerController : MonoBehaviour
         stunned = flag;
     }
 
-    public void Stasis(bool flag)
+    public void SetStasis(bool flag)
     {
         if (flag)
         {
             StopCoroutine(moveCoroutine);
         }
         stasis = flag;
+    }
+
+    public void SetInvincible(bool flag)
+    {
+        invincible = flag;
+    }
+
+    public void SetGodMode(bool flag)
+    {
+        god = flag;
     }
 
     public void Mark(AbilityManager.AbilityInput input, bool flag)

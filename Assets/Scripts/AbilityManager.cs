@@ -1,8 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using UnityEngine;
+
 
 [DefaultExecutionOrder(0)]
 public class AbilityManager : MonoBehaviour
@@ -11,9 +11,7 @@ public class AbilityManager : MonoBehaviour
 
     public List<Ability> projectiles;
 
-    public PlayerController playerController;
-
-    public static Dictionary<AbilityComponent.Type, Action<AbilityInput>> componentDictionary;
+    public static Dictionary<AbilityComponentData.Type, Action<AbilityInput>> componentDictionary;
 
     [SerializeField]
     static float tickRate = .5f;
@@ -29,23 +27,23 @@ public class AbilityManager : MonoBehaviour
             Destroy(this);
         }
 
-        playerController = FindAnyObjectByType<PlayerController>();
+        componentDictionary = new Dictionary<AbilityComponentData.Type, Action<AbilityInput>>();
+        //negative
+        componentDictionary[AbilityComponentData.Type.Damage] = Damage;
+        componentDictionary[AbilityComponentData.Type.Stun] = Stun;
+        componentDictionary[AbilityComponentData.Type.Root] = Root;
+        componentDictionary[AbilityComponentData.Type.Mark] = Mark;
+        componentDictionary[AbilityComponentData.Type.SlowFlat] = SlowFlat;
+        componentDictionary[AbilityComponentData.Type.SlowMult] = SlowMult;
 
-        componentDictionary = new Dictionary<AbilityComponent.Type, Action<AbilityInput>>();
-        //enemy
-        componentDictionary[AbilityComponent.Type.Damage] = Damage;
-        componentDictionary[AbilityComponent.Type.Stun] = Stun;
-        componentDictionary[AbilityComponent.Type.Root] = Root;
-        componentDictionary[AbilityComponent.Type.Mark] = Mark;
-        componentDictionary[AbilityComponent.Type.Slow] = Slow;
-
-        //player
-        componentDictionary[AbilityComponent.Type.Heal] = Heal;
-        componentDictionary[AbilityComponent.Type.SpeedUp] = SpeedUp;
-        componentDictionary[AbilityComponent.Type.Blink] = Blink;
-        componentDictionary[AbilityComponent.Type.Stasis] = Stasis;
-        componentDictionary[AbilityComponent.Type.Cleanse] = Cleanse;
-        componentDictionary[AbilityComponent.Type.Dash] = Dash;
+        //positive
+        componentDictionary[AbilityComponentData.Type.Heal] = Heal;
+        componentDictionary[AbilityComponentData.Type.SpeedUpFlat] = SpeedUpFlat;
+        componentDictionary[AbilityComponentData.Type.SpeedUpMult] = SpeedUpMult;
+        componentDictionary[AbilityComponentData.Type.Blink] = Blink;
+        componentDictionary[AbilityComponentData.Type.Stasis] = Stasis;
+        componentDictionary[AbilityComponentData.Type.Cleanse] = Cleanse;
+        componentDictionary[AbilityComponentData.Type.Dash] = Dash;
 
     }
 
@@ -54,14 +52,14 @@ public class AbilityManager : MonoBehaviour
     {
         if (input.duration == 0)//instant heal
         {
-            playerController.ApplyHeal(input.magnitude);
+            input.target.ApplyHeal(input.magnitude);
         }
         else//heal over time
         {
             Effect effect = new Effect(
              Effect.Type.Ticking,
-             () => playerController.ApplyHeal(input),
-             (id) => playerController.RemoveFromBuffs(id)
+             () => input.target.ApplyHeal(input.magnitude),
+             (id) => input.target.RemoveFromBuffs(id)
              );
             BuffTarget(input, effect);
         }
@@ -69,40 +67,51 @@ public class AbilityManager : MonoBehaviour
 
     void Blink(AbilityInput input)
     {
-        playerController.Blink(input);
+        input.target.Blink(input);
     }
 
     void Stasis(AbilityInput input)
     {
         Effect effect = new Effect(
             Effect.Type.Status,
-            () => playerController.Stasis(true),
-            (id) => playerController.RemoveFromBuffs(id),
-            () => playerController.Stasis(false)
+            () => input.target.SetStasis(true),
+            (id) => input.target.RemoveFromBuffs(id),
+            () => input.target.SetStasis(false)
             );
         BuffTarget(input, effect);
     }
 
-    void SpeedUp(AbilityInput input)
+    void SpeedUpMult(AbilityInput input)
     {
         Effect effect = new Effect(
             Effect.Type.Status,
-            () => playerController.ModifyMovementSpeed(input, true),
-            (id) => playerController.RemoveFromBuffs(id),
-            () => playerController.ModifyMovementSpeed(input, false)
+            () => input.target.ModifyMSMult(input.magnitude),
+            (id) => input.target.RemoveFromBuffs(id),
+            () => input.target.ModifyMSMult(-input.magnitude)
             );
         BuffTarget(input, effect);
     }
 
-    void Cleanse(AbilityInput input = null)
+    void SpeedUpFlat(AbilityInput input)
     {
-        playerController.RemoveAllDebuffs();
+        Effect effect = new Effect(
+            Effect.Type.Status,
+            () => input.target.ModifyMSFlat(input.magnitude),
+            (id) => input.target.RemoveFromBuffs(id),
+            () => input.target.ModifyMSFlat(-input.magnitude)
+            );
+        BuffTarget(input, effect);
+    }
+
+    void Cleanse(AbilityInput input)
+    {
+        input.target.RemoveAllDebuffs();
     }
 
     void Dash(AbilityInput input)
     {
         //use the mover/move from playercontroller after giving them parameters
-        playerController.Dash(input);
+        input.target.Dash(input);
     }
     #endregion
 
@@ -111,15 +120,15 @@ public class AbilityManager : MonoBehaviour
     {
         if(input.duration == 0)//instant damage 
         {
-            playerController.ApplyDamage(input.magnitude);
+            input.target.ApplyDamage(input.magnitude);
         }
         else//damage over time, untested
         {
             //MAYBE add a new variable called stackable and if the ability is stackable dont use this block, if its not stackable use the part etc etc
             Effect tickingEffect = new Effect(
                 Effect.Type.Ticking,
-                () => playerController.ApplyDamage(input),
-                (id) => playerController.RemoveFromDebuffs(id)
+                () => input.target.ApplyDamage(input.magnitude),
+                (id) => input.target.RemoveFromDebuffs(id)
                 );
             DebuffTarget(input, tickingEffect);
         }
@@ -129,9 +138,9 @@ public class AbilityManager : MonoBehaviour
     {
         Effect effect = new Effect(
             Effect.Type.Status,
-            () => playerController.Stun(true),
-            (id) => playerController.RemoveFromDebuffs(id),
-            () => playerController.Stun(false)
+            () => input.target.SetStunned(true),
+            (id) => input.target.RemoveFromDebuffs(id),
+            () => input.target.SetStunned(false)
             );
         DebuffTarget(input, effect);
     }
@@ -140,15 +149,16 @@ public class AbilityManager : MonoBehaviour
     {
         Effect effect = new Effect(
             Effect.Type.Status,
-            () => playerController.Root(true),
-            (id) => playerController.RemoveFromDebuffs(id),
-            () => playerController.Root(false)
+            () => input.target.SetRooted(true),
+            (id) => input.target.RemoveFromDebuffs(id),
+            () => input.target.SetRooted(false)
             );
         DebuffTarget(input, effect);
     }
 
     void Mark(AbilityInput input)//untested
     {
+        /*
         Effect effect = new Effect(
             Effect.Type.Status,
             () => playerController.Mark(input, true),
@@ -156,15 +166,27 @@ public class AbilityManager : MonoBehaviour
             () => playerController.Mark(input, false)
             );
         DebuffTarget(input, effect);
+        */
     }
 
-    void Slow(AbilityInput input)
+    void SlowFlat(AbilityInput input)
     {
         Effect effect = new Effect(
             Effect.Type.Status,
-            () => playerController.ModifyMovementSpeed(input, false),
-            (id) => playerController.RemoveFromDebuffs(id),
-            () => playerController.ModifyMovementSpeed(input, true)
+            () => input.target.ModifyMSFlat(-input.magnitude),
+            (id) => input.target.RemoveFromDebuffs(id),
+            () => input.target.ModifyMSFlat(input.magnitude)
+            );
+        DebuffTarget(input, effect);
+    }
+
+    void SlowMult(AbilityInput input)
+    {
+        Effect effect = new Effect(
+            Effect.Type.Status,
+            () => input.target.ModifyMSMult(input.magnitude),
+            (id) => input.target.RemoveFromDebuffs(id),
+            () => input.target.ModifyMSMult(1 / input.magnitude)
             );
         DebuffTarget(input, effect);
     }
@@ -176,7 +198,7 @@ public class AbilityManager : MonoBehaviour
     {
         effect.Apply();
         yield return new WaitForSeconds(input.duration);
-        effect.Undo();
+        //effect.Undo();
         effect.UnlistCallback(input.id);
     }
 
@@ -194,7 +216,7 @@ public class AbilityManager : MonoBehaviour
 
     void BuffTarget(AbilityInput input, Effect effect)
     {
-        EffectInfo buffInfo = playerController.HasBuff(input.id);
+        EffectInfo buffInfo = input.target.HasBuff(input.id);
         
         if(buffInfo != null && buffInfo.coroutine != null)
         {
@@ -211,13 +233,13 @@ public class AbilityManager : MonoBehaviour
             buffCoroutine = StartCoroutine(TickingOverTime(input, effect));
         }
 
-        buffInfo = new EffectInfo(buffCoroutine, effect);
-        playerController.AddToBuffs(input.id, buffInfo);
+        buffInfo = new EffectInfo(buffCoroutine, effect, input.source);
+        input.target.AddToBuffs(input.id, buffInfo);
     }
 
     void DebuffTarget(AbilityInput input, Effect effect)
     {
-        EffectInfo debuffInfo = playerController.HasDebuff(input.id);
+        EffectInfo debuffInfo = input.target.HasDebuff(input.id);
 
         if (debuffInfo != null && debuffInfo.coroutine != null)
         {
@@ -234,8 +256,8 @@ public class AbilityManager : MonoBehaviour
             coroutine = StartCoroutine(TickingOverTime(input, effect));
         }
 
-        debuffInfo = new EffectInfo(coroutine, effect);
-        playerController.AddToDebuffs(input.id, debuffInfo);
+        debuffInfo = new EffectInfo(coroutine, effect, input.source);
+        input.target.AddToDebuffs(input.id, debuffInfo);
     }
 
     //this is needed to avoid an apparently harmless error msg "Coroutine continue failure" when cleansing since coroutines need to be stopped in the script they are created.
@@ -273,29 +295,39 @@ public class AbilityManager : MonoBehaviour
         {
             get { return duration;}
         }
-        public enum Type { Damage, Stun, Root, Mark, Slow, Heal, SpeedUp, Blink, Stasis, Cleanse, Dash };
+        
         [SerializeField]
-        Type type;
-        public Type CompType
+        AbilityComponentData.Type type;
+        public AbilityComponentData.Type CompType
         {
             get { return type; }
         }
 
-        [HideInInspector]
-        public readonly List<Type> invokeEachTick = new List<Type> { Type.Damage, Type.Heal };
-
-        [HideInInspector]
-        public readonly List<Type> statuses = new List<Type> { Type.Stun, Type.Root, Type.Mark, Type.Slow, Type.SpeedUp, Type.Stasis};
-        public void Apply(string id)
+        public void Apply(string id, ICharacter target, GameObject source)
         {
             //Debug.Log("Applying Ability Component: " + type.ToString() +" Magnitude: " + magnitude.ToString() + " Duration: " + duration.ToString());
-            componentDictionary[type].Invoke(new AbilityInput(id, magnitude, duration));
+            componentDictionary[type].Invoke(new AbilityInput(target, source, id, magnitude, duration));
         }
 
-        public void ForceInvoke(string id)
+        public void ForceInvoke(string id, ICharacter target, GameObject source)
         {
-            componentDictionary[type].Invoke(new AbilityInput(id, magnitude, duration));
+            componentDictionary[type].Invoke(new AbilityInput(target, source, id, magnitude, duration));
         }
+    }
+
+    public struct AbilityComponentData
+    {
+        public enum Type { Damage, Stun, Root, Mark, SlowFlat, Heal, SpeedUpFlat, Blink, Stasis, Cleanse, Dash, SlowMult, SpeedUpMult };
+
+        [HideInInspector]
+        public static readonly HashSet<Type> invokeEachTick = new HashSet<Type> { Type.Damage, Type.Heal };
+        [HideInInspector]
+        public static readonly HashSet<Type> statuses = new HashSet<Type> { Type.Stun, Type.Root, Type.Mark, Type.Stasis };
+        [HideInInspector]
+        public static readonly HashSet<Type> statFlatModifiers = new HashSet<Type> { Type.SlowFlat, Type.SpeedUpFlat };
+        [HideInInspector]
+        public static readonly HashSet<Type> statMultModifiers = new HashSet<Type> { Type.SlowMult, Type.SpeedUpMult };
+
     }
 
     public class Effect
@@ -318,17 +350,18 @@ public class AbilityManager : MonoBehaviour
         //public string id;
         public Coroutine coroutine;
         public Effect effect;
-        
-        public EffectInfo(Coroutine crt, Effect eff)
+        public GameObject source;
+        public EffectInfo(Coroutine crt, Effect eff, GameObject src)
         {
             coroutine = crt;
             effect = eff;
+            source = src;
         }
     }
 
     class ComponentActionPair
     {
-        public AbilityComponent.Type componentType;
+        public AbilityComponentData.Type componentType;
         public Action function;
     }
 
@@ -336,12 +369,16 @@ public class AbilityManager : MonoBehaviour
     {
         public string id = "";
         public float magnitude = 0, duration = 0;
-        
-        public AbilityInput(string _id = "", float _magnitude = 0, float _duration = 0)
+        public GameObject source;
+        public ICharacter target;
+
+        public AbilityInput(ICharacter _target, GameObject _source, string _id = "", float _magnitude = 0, float _duration = 0)
         {
             id = _id;
             magnitude = _magnitude;
             duration = _duration;
+            target = _target;
+            source = _source;
         }
     }
     [Serializable]//, RequireComponent(typeof(Collider2D))] reqComp doesnt work here apparently, sadly
@@ -349,7 +386,11 @@ public class AbilityManager : MonoBehaviour
     {
         public enum Type { TargetGround, Projectile , UnitSpawn, Laser, Self };//this is unused
         public Type type;//this is unused 
-
+        public string targetingLayer;
+        public LayerMask LayerMask
+        {
+            get { return targetingLayer != "" ? LayerMask.GetMask(targetingLayer) : default(LayerMask); }
+        }
         public GameObject collidingUnit;//unit that has a collider such as a projectile
 
     }

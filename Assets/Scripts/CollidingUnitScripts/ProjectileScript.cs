@@ -1,12 +1,9 @@
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 public class ProjectileScript : MonoBehaviour, ICollidingUnit
 {
-    AbilityManager.Targeting targetingInfo;
+    //AbilityManager.Targeting targetingInfo;
 
     Vector3 startingPosition, targetPosition;
 
@@ -19,42 +16,28 @@ public class ProjectileScript : MonoBehaviour, ICollidingUnit
     float unitSpeed;
     Coroutine behaviour;
 
-    LayerMask mask;
-
-
-    public void Initialize(Vector3 target, Ability callerReference)
+    //LayerMask mask;
+    GameObject source;
+    
+    public void Initialize(Vector3 target, Ability abilityReference, GameObject source)
     {
-        targetingInfo = callerReference.targetingInformation;
+        this.source = source;
+        //targetingInfo = callerReference.targetingInformation;
         targetPosition = target;
-        abilityRef = callerReference;
+        abilityRef = abilityReference;
 
         transform.localPosition = Vector3.zero;
         startingPosition = transform.position;
 
         hitCount = 0;
-        mask = LayerMask.GetMask("Player");
+        //mask = LayerMask.GetMask("Player");
+
+        GetComponent<Collider2D>().includeLayers = abilityReference.targetingInformation.LayerMask;
         behaviour = StartCoroutine(UnitBehaviour());
     }
 
     public IEnumerator UnitBehaviour()
     {
-        /*
-        float distance = Vector3.Distance(startingPosition, targetPosition);
-        float t = 0;
-        float tStep = 1 / (distance / unitSpeed);
-
-        Renderer renderer = GetComponent<Renderer>();
-        //lerp position to target
-        while (t < 1 || renderer.isVisible == true)
-        {
-            t += tStep * 0.1f;
-            transform.position = Vector3.LerpUnclamped(startingPosition, targetPosition, Mathf.Min(t, 4));//instead of stopping at a distance, just destroy self  when fully outside of screen
-            yield return new WaitForFixedUpdate();
-        }
-        
-        */
-
-        
         GetComponent<Rigidbody2D>().velocity = (targetPosition - startingPosition).normalized * unitSpeed;
         //yield return null;
         yield return new WaitUntil(() => GetComponent<Renderer>().isVisible == true);
@@ -72,17 +55,20 @@ public class ProjectileScript : MonoBehaviour, ICollidingUnit
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
+        /*
         if((mask & 1 << collision.gameObject.layer) == 0)
         {
-            //Debug.Log("non player hit");
+            //Debug.Log("non targetlayer hit");
             return;
         }
-        //Debug.Log("player hit");
+        */
+        //Debug.Log("hit");
 
-        if(maximumHitCount >= hitCount++)
+        if(collision.gameObject.TryGetComponent(out ICharacter character) && maximumHitCount >= hitCount)
         {
             //do hit stuff
-            abilityRef.ApplyComponentEffects(collision.gameObject);
+            abilityRef.ApplyComponentEffects(character, source);
+            hitCount++;
         }
         if (maximumHitCount <= hitCount)
         {

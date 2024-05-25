@@ -16,6 +16,7 @@ MonoBehaviour:
   cooldown: 0
   targetingInformation:
     type: 4
+    targetingLayer: Player
     collidingUnit: {fileID: 0}
   activeComponents:
   - magnitude: 5

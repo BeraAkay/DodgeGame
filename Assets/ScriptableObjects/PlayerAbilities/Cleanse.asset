@@ -12,10 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3cac85d3fb38beb4bb877aeb93670147, type: 3}
   m_Name: Cleanse
   m_EditorClassIdentifier: 
-  name: 
+  name: cleanse
   cooldown: 0
   targetingInformation:
     type: 4
+    targetingLayer: Player
     collidingUnit: {fileID: 0}
   activeComponents:
   - magnitude: 0

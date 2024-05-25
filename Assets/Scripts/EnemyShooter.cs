@@ -22,7 +22,7 @@ public class EnemyShooter : MonoBehaviour
     {
         for(; ; )
         {
-            ability.Use(transform, PlayerController.Instance.Position);
+            ability.Use(gameObject, PlayerController.Instance.Position);
             yield return new WaitForSeconds(ability.cooldown);
         }
     }

@@ -16,6 +16,7 @@ MonoBehaviour:
   cooldown: 5
   targetingInformation:
     type: 1
+    targetingLayer: Player
     collidingUnit: {fileID: 9138986177031594840, guid: 5e5fbf46ca0333941845c3f632c1c388, type: 3}
   activeComponents:
   - magnitude: 0
